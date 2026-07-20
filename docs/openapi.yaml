@@ -1,0 +1,314 @@
+openapi: 3.1.0
+info:
+  title: GridDNA AI API
+  description: Autonomous Energy Intelligence Platform
+  version: 0.1.0
+  contact:
+    name: GridDNA AI
+    email: contact@griddna.ai
+
+servers:
+  - url: http://localhost:3000/api/v1
+    description: Local development
+  - url: https://api.griddna.ai/v1
+    description: Production (future)
+
+tags:
+  - name: Auth
+  - name: Organizations
+  - name: Sites
+  - name: Assets
+  - name: Telemetry
+  - name: Health
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+          example: admin@griddna.ai
+        password:
+          type: string
+          minLength: 8
+
+    AuthResponse:
+      type: object
+      properties:
+        accessToken:
+          type: string
+        user:
+          $ref: '#/components/schemas/User'
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+        firstName:
+          type: string
+        lastName:
+          type: string
+        role:
+          type: string
+          enum: [owner, admin, operator, technician, viewer]
+        orgId:
+          type: string
+          format: uuid
+
+    Site:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        type:
+          type: string
+        address:
+          type: string
+        latitude:
+          type: number
+        longitude:
+          type: number
+
+    Asset:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        siteId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        type:
+          type: string
+        healthScore:
+          type: number
+        ratedPowerKw:
+          type: number
+
+    TelemetryReading:
+      type: object
+      properties:
+        time:
+          type: string
+          format: date-time
+        voltage:
+          type: number
+        current:
+          type: number
+        power:
+          type: number
+        energy:
+          type: number
+        frequency:
+          type: number
+        power_factor:
+          type: number
+        temperature:
+          type: number
+        humidity:
+          type: number
+        vibration_rms:
+          type: number
+
+    Alert:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        assetId:
+          type: string
+          format: uuid
+        severity:
+          type: string
+          enum: [info, warning, critical]
+        title:
+          type: string
+        message:
+          type: string
+        anomalyScore:
+          type: number
+        acknowledged:
+          type: boolean
+
+paths:
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Authenticate user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+
+  /auth/me:
+    get:
+      tags: [Auth]
+      summary: Current user profile
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+
+  /organizations/current:
+    get:
+      tags: [Organizations]
+      summary: Get current organization
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+
+  /sites:
+    get:
+      tags: [Sites]
+      summary: List sites
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Site'
+    post:
+      tags: [Sites]
+      summary: Create site
+      security:
+        - bearerAuth: []
+      responses:
+        '201':
+          description: Created
+
+  /assets:
+    get:
+      tags: [Assets]
+      summary: List assets
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: site_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Asset'
+
+  /assets/{id}/health:
+    get:
+      tags: [Assets]
+      summary: Asset health summary
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Success
+
+  /assets/{assetId}/telemetry:
+    get:
+      tags: [Telemetry]
+      summary: Aggregated telemetry
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: assetId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: from
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+        - name: interval
+          in: query
+          schema:
+            type: string
+            default: "1 minute"
+      responses:
+        '200':
+          description: Success
+
+  /alerts:
+    get:
+      tags: [Telemetry]
+      summary: List alerts
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Alert'
+
+  /health:
+    get:
+      tags: [Health]
+      summary: Health check
+      responses:
+        '200':
+          description: OK

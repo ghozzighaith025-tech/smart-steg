@@ -1,0 +1,51 @@
+# Dependencies
+node_modules/
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pio/
+
+# Build
+dist/
+build/
+*.egg-info/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Docker
+docker-data/
+
+# Secrets
+*.pem
+*.key
+credentials.json
+
+# Test / coverage
+coverage/
+.coverage
+htmlcov/
+.pytest_cache/
+
+# Mobile
+mobile/.expo/
+mobile/android/
+mobile/ios/

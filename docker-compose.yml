@@ -1,0 +1,101 @@
+services:
+  postgres:
+    image: timescale/timescaledb:latest-pg16
+    container_name: griddna-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-griddna}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-griddna_dev_secret}
+      POSTGRES_DB: ${POSTGRES_DB:-griddna}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-griddna} -d ${POSTGRES_DB:-griddna}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: griddna-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  emqx:
+    image: emqx/emqx:5.8
+    container_name: griddna-emqx
+    restart: unless-stopped
+    environment:
+      EMQX_NAME: griddna-emqx
+      EMQX_DASHBOARD__DEFAULT_USERNAME: admin
+      EMQX_DASHBOARD__DEFAULT_PASSWORD: griddna_admin
+    ports:
+      - "1883:1883"    # MQTT
+      - "8083:8083"    # WebSocket MQTT
+      - "8883:8883"    # MQTT TLS
+      - "18083:18083"  # Dashboard
+    volumes:
+      - emqx_data:/opt/emqx/data
+    healthcheck:
+      test: ["CMD", "emqx_ctl", "status"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: griddna-backend
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-griddna}:${POSTGRES_PASSWORD:-griddna_dev_secret}@postgres:5432/${POSTGRES_DB:-griddna}
+      REDIS_URL: redis://redis:6379
+      MQTT_BROKER_URL: mqtt://emqx:1883
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      emqx:
+        condition: service_healthy
+    profiles:
+      - full
+
+  ai:
+    build:
+      context: ./ai
+      dockerfile: Dockerfile
+    container_name: griddna-ai
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-griddna}:${POSTGRES_PASSWORD:-griddna_dev_secret}@postgres:5432/${POSTGRES_DB:-griddna}
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles:
+      - full
+
+volumes:
+  postgres_data:
+  redis_data:
+  emqx_data:

@@ -1,0 +1,23 @@
+{
+  "name": "griddna-ai",
+  "version": "0.1.0",
+  "private": true,
+  "description": "GridDNA AI — Autonomous Energy Intelligence Platform",
+  "scripts": {
+    "infra:up": "docker compose up -d postgres redis emqx",
+    "infra:down": "docker compose down",
+    "infra:logs": "docker compose logs -f",
+    "dev:backend": "npm run start:dev --prefix backend",
+    "dev:web": "npm run dev --prefix web",
+    "dev:ai": "cd ai && python -m uvicorn app.main:app --reload --port 8000",
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:web\" \"npm run dev:ai\"",
+    "build:backend": "npm run build --prefix backend",
+    "build:web": "npm run build --prefix web"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
